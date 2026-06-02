@@ -73,9 +73,17 @@ function ProfilePage() {
     },
   });
 
-  const avatarUrl = profile?.avatar_url
-    ? supabase.storage.from("avatars").getPublicUrl(profile.avatar_url).data.publicUrl
-    : null;
+  const { data: avatarUrl } = useQuery({
+    queryKey: ["avatar-signed", profile?.avatar_url],
+    enabled: !!profile?.avatar_url,
+    queryFn: async () => {
+      const { data, error } = await supabase.storage
+        .from("avatars")
+        .createSignedUrl(profile!.avatar_url!, 60 * 60);
+      if (error) throw error;
+      return data.signedUrl;
+    },
+  });
   const initials =
     (profile?.full_name ?? user?.email ?? "?")
       .split(/\s+/)
