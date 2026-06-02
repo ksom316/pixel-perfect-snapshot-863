@@ -129,6 +129,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
           full_name: string | null
           id: string
@@ -136,6 +137,7 @@ export type Database = {
           vark_scores: Json | null
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           full_name?: string | null
           id: string
@@ -143,6 +145,7 @@ export type Database = {
           vark_scores?: Json | null
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           full_name?: string | null
           id?: string
