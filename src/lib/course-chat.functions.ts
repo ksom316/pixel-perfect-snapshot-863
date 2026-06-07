@@ -24,9 +24,19 @@ export const askCourse = createServerFn({ method: "POST" })
         ? `Give me a clear, well-structured general overview of the course "${data.courseTitle}". Cover: what it is, the key topics, why it matters, and how someone should approach learning it.${
             data.courseSummary ? `\n\nCourse summary for context: ${data.courseSummary}` : ""
           }`
-        : `In the context of the course "${data.courseTitle}"${
+        : `You are tutoring a learner in the course "${data.courseTitle}"${
             data.courseSummary ? ` (${data.courseSummary})` : ""
-          }, answer the following question for a learner:\n\n${data.question}`;
+          }.
+
+First, decide whether the learner's question below is reasonably related to this course's subject matter. Be generous — adjacent concepts, prerequisites, applications, and tools commonly used in the course all count as related.
+
+If the question is NOT related to the course at all, respond with EXACTLY this single line and nothing else:
+NOT_RELATED: <one short sentence telling the user the question isn't related to ${data.courseTitle} and to ask something about the course instead>
+
+Otherwise, answer the question clearly and helpfully using Markdown.
+
+Learner's question:
+${data.question}`;
 
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -49,5 +59,10 @@ export const askCourse = createServerFn({ method: "POST" })
     }
     const json = await res.json();
     const answer: string = json.choices?.[0]?.message?.content ?? "No response.";
-    return { answer };
+    const trimmed = answer.trim();
+    if (trimmed.startsWith("NOT_RELATED:")) {
+      const reason = trimmed.replace(/^NOT_RELATED:\s*/, "");
+      return { answer: "", related: false as const, reason };
+    }
+    return { answer, related: true as const };
   });
