@@ -1,14 +1,16 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import ReactMarkdown from "react-markdown";
-import { ArrowUp, BookOpen, Loader2, Sparkles } from "lucide-react";
+import { AlertTriangle, ArrowUp, BookOpen, Check, Loader2, Plus, Sparkles } from "lucide-react";
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { askCourse } from "@/lib/course-chat.functions";
+import { useAuth } from "@/hooks/use-auth";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/courses/$slug")({
   component: CourseDetail,
@@ -16,6 +18,8 @@ export const Route = createFileRoute("/courses/$slug")({
 
 function CourseDetail() {
   const { slug } = Route.useParams();
+  const { user } = useAuth();
+  const qc = useQueryClient();
   const ask = useServerFn(askCourse);
   const [input, setInput] = useState("");
 
@@ -31,6 +35,36 @@ function CourseDetail() {
       if (!course) throw notFound();
       return course;
     },
+  });
+
+  const { data: enrollment } = useQuery({
+    queryKey: ["enrollment", user?.id, data?.id],
+    enabled: !!user && !!data?.id,
+    queryFn: async () => {
+      const { data: row } = await supabase
+        .from("enrollments")
+        .select("id")
+        .eq("user_id", user!.id)
+        .eq("course_id", data!.id)
+        .maybeSingle();
+      return row;
+    },
+  });
+
+  const enroll = useMutation({
+    mutationFn: async () => {
+      if (!user || !data) throw new Error("Sign in to enroll");
+      const { error } = await supabase
+        .from("enrollments")
+        .insert({ user_id: user.id, course_id: data.id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success(`Enrolled in ${data?.title}`);
+      qc.invalidateQueries({ queryKey: ["enrollment", user?.id, data?.id] });
+      qc.invalidateQueries({ queryKey: ["enrolled-courses", user?.id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const mutation = useMutation({
@@ -73,6 +107,38 @@ function CourseDetail() {
             </p>
             <h1 className="mt-2 font-display text-5xl">{data.title}</h1>
             {data.summary && <p className="mt-3 text-muted-foreground">{data.summary}</p>}
+
+            {/* Enroll CTA */}
+            {user && (
+              <div className="mt-6">
+                {enrollment ? (
+                  <Button size="lg" variant="outline" disabled className="h-12 rounded-full px-6 text-base">
+                    <Check className="mr-2 h-5 w-5" /> Enrolled
+                  </Button>
+                ) : (
+                  <Button
+                    size="lg"
+                    onClick={() => enroll.mutate()}
+                    disabled={enroll.isPending}
+                    className="h-12 rounded-full px-6 text-base"
+                  >
+                    {enroll.isPending ? (
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    ) : (
+                      <Plus className="mr-2 h-5 w-5" />
+                    )}
+                    Enroll in this course
+                  </Button>
+                )}
+              </div>
+            )}
+            {!user && (
+              <Link to="/login" className="mt-6 inline-block">
+                <Button size="lg" className="h-12 rounded-full px-6 text-base">
+                  <Plus className="mr-2 h-5 w-5" /> Sign in to enroll
+                </Button>
+              </Link>
+            )}
 
             <div className="mt-10 flex flex-col items-center text-center">
               <h2 className="font-display text-2xl">What would you like to learn?</h2>
@@ -155,7 +221,18 @@ function CourseDetail() {
                     Couldn't get a response: {(mutation.error as Error).message}
                   </p>
                 )}
-                {mutation.data && (
+                {mutation.data && mutation.data.related === false && (
+                  <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-left">
+                    <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                    <div>
+                      <p className="font-medium text-foreground">That doesn't look related to {data.title}.</p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {mutation.data.reason || `Try asking something specific to ${data.title}.`}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {mutation.data && mutation.data.related !== false && mutation.data.answer && (
                   <div className="prose-lesson max-w-none text-foreground">
                     <ReactMarkdown>{mutation.data.answer}</ReactMarkdown>
                   </div>

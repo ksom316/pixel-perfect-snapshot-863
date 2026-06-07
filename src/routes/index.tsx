@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { ArrowRight, BookOpen, Brain, Headphones, PlayCircle, Sparkles, Target, CheckCircle2 } from "lucide-react";
+import { ArrowRight, BookOpen, Brain, Headphones, PlayCircle, Sparkles, Target } from "lucide-react";
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
 import { Button } from "@/components/ui/button";
@@ -75,46 +75,6 @@ function LandingPage() {
               </div>
             </motion.div>
 
-            {/* Mock dashboard preview card */}
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.15 }}
-              className="relative mx-auto mt-16 max-w-5xl"
-            >
-              <div className="rounded-2xl border border-border bg-card shadow-2xl shadow-primary/10">
-                <div className="flex items-center gap-1.5 border-b border-border px-4 py-3">
-                  <span className="h-2.5 w-2.5 rounded-full bg-destructive/70" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-accent/60" />
-                  <span className="h-2.5 w-2.5 rounded-full bg-success/70" />
-                  <span className="ml-3 text-xs text-muted-foreground">acetutor.app/dashboard</span>
-                </div>
-                <div className="grid gap-4 p-6 md:grid-cols-3">
-                  <div className="rounded-xl border border-border bg-background p-5">
-                    <p className="text-xs uppercase tracking-widest text-muted-foreground">Learning style</p>
-                    <p className="mt-2 text-2xl font-bold">Visual</p>
-                    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-                      <div className="h-full w-[72%] rounded-full bg-primary" />
-                    </div>
-                  </div>
-                  <div className="rounded-xl border border-border bg-background p-5">
-                    <p className="text-xs uppercase tracking-widest text-muted-foreground">Continue learning</p>
-                    <p className="mt-2 text-base font-semibold">Binary Search Trees</p>
-                    <p className="mt-1 text-xs text-muted-foreground">DSA · Lesson 4 of 9</p>
-                    <button className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground">
-                      <PlayCircle className="h-3.5 w-3.5" /> Resume
-                    </button>
-                  </div>
-                  <div className="rounded-xl border border-border bg-background p-5">
-                    <p className="text-xs uppercase tracking-widest text-muted-foreground">Rolling accuracy</p>
-                    <p className="mt-2 text-2xl font-bold">87%</p>
-                    <p className="mt-1 inline-flex items-center gap-1 text-xs text-success">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Difficulty: Adaptive
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
           </div>
         </section>
 

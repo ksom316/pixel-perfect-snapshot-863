@@ -60,16 +60,14 @@ function ProfilePage() {
     enabled: !!user,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("quiz_attempts")
-        .select("topics(courses(id, slug, title))")
-        .eq("user_id", user!.id);
+        .from("enrollments")
+        .select("created_at, courses(id, slug, title, summary)")
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false });
       if (error) throw error;
-      const map = new Map<string, { slug: string; title: string }>();
-      (data ?? []).forEach((row: any) => {
-        const c = row.topics?.courses;
-        if (c?.id) map.set(c.id, { slug: c.slug, title: c.title });
-      });
-      return Array.from(map.values());
+      return (data ?? [])
+        .map((row: any) => row.courses)
+        .filter((c: any): c is { id: string; slug: string; title: string; summary: string | null } => !!c);
     },
   });
 
