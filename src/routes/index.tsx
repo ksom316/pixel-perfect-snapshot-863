@@ -1,9 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { ArrowRight, BookOpen, Brain, Headphones, PlayCircle, Sparkles, Target, CheckCircle2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, BookOpen, Brain, Headphones, PlayCircle, Sparkles, Target, CheckCircle2, GraduationCap } from "lucide-react";
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
