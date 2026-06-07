@@ -1,9 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { ArrowRight, BookOpen, Brain, Headphones, PlayCircle, Sparkles, Target, CheckCircle2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, BookOpen, Brain, Headphones, PlayCircle, Sparkles, Target, CheckCircle2, GraduationCap } from "lucide-react";
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -25,6 +28,20 @@ const stats = [
 ];
 
 function LandingPage() {
+  const { user } = useAuth();
+  const { data: myEnrollments } = useQuery({
+    queryKey: ["my-enrollments", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("enrollments")
+        .select("course_id, courses(id, slug, title, summary)")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
   return (
     <div className="min-h-screen">
       <Header />
@@ -87,7 +104,7 @@ function LandingPage() {
                   <span className="h-2.5 w-2.5 rounded-full bg-destructive/70" />
                   <span className="h-2.5 w-2.5 rounded-full bg-accent/60" />
                   <span className="h-2.5 w-2.5 rounded-full bg-success/70" />
-                  <span className="ml-3 text-xs text-muted-foreground">acetutor.app/dashboard</span>
+                  <span className="ml-3 text-xs text-muted-foreground">Your learning dashboard</span>
                 </div>
                 <div className="grid gap-4 p-6 md:grid-cols-3">
                   <div className="rounded-xl border border-border bg-background p-5">
@@ -117,6 +134,45 @@ function LandingPage() {
             </motion.div>
           </div>
         </section>
+
+        {/* My courses (logged-in) */}
+        {user && myEnrollments && myEnrollments.length > 0 && (
+          <section className="container mx-auto max-w-6xl px-4 py-12">
+            <div className="mb-6 flex items-end justify-between">
+              <div>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                  <GraduationCap className="h-3 w-3" /> Your courses
+                </span>
+                <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
+                  Continue where you left off
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  You're enrolled in {myEnrollments.length} course{myEnrollments.length === 1 ? "" : "s"}.
+                </p>
+              </div>
+              <Link to="/courses" className="hidden text-sm text-muted-foreground hover:text-foreground md:inline-flex md:items-center">
+                Browse more <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              </Link>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {myEnrollments.map((e: any) => e.courses && (
+                <Link
+                  key={e.course_id}
+                  to="/courses/$slug"
+                  params={{ slug: e.courses.slug }}
+                  className="group block rounded-2xl border border-primary/30 bg-card p-6 transition-all hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-lg"
+                >
+                  <div className="flex items-center justify-between">
+                    <BookOpen className="h-5 w-5 text-primary" />
+                    <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
+                  </div>
+                  <h3 className="mt-4 text-xl font-semibold tracking-tight">{e.courses.title}</h3>
+                  {e.courses.summary && <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{e.courses.summary}</p>}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Pillars */}
         <section className="container mx-auto max-w-6xl px-4 py-16">
