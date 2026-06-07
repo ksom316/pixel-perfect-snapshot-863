@@ -28,6 +28,20 @@ const stats = [
 ];
 
 function LandingPage() {
+  const { user } = useAuth();
+  const { data: myEnrollments } = useQuery({
+    queryKey: ["my-enrollments", user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("enrollments")
+        .select("course_id, courses(id, slug, title, summary)")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
   return (
     <div className="min-h-screen">
       <Header />
