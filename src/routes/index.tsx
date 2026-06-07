@@ -135,6 +135,45 @@ function LandingPage() {
           </div>
         </section>
 
+        {/* My courses (logged-in) */}
+        {user && myEnrollments && myEnrollments.length > 0 && (
+          <section className="container mx-auto max-w-6xl px-4 py-12">
+            <div className="mb-6 flex items-end justify-between">
+              <div>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                  <GraduationCap className="h-3 w-3" /> Your courses
+                </span>
+                <h2 className="mt-3 text-3xl font-bold tracking-tight md:text-4xl">
+                  Continue where you left off
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  You're enrolled in {myEnrollments.length} course{myEnrollments.length === 1 ? "" : "s"}.
+                </p>
+              </div>
+              <Link to="/courses" className="hidden text-sm text-muted-foreground hover:text-foreground md:inline-flex md:items-center">
+                Browse more <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              </Link>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {myEnrollments.map((e: any) => e.courses && (
+                <Link
+                  key={e.course_id}
+                  to="/courses/$slug"
+                  params={{ slug: e.courses.slug }}
+                  className="group block rounded-2xl border border-primary/30 bg-card p-6 transition-all hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-lg"
+                >
+                  <div className="flex items-center justify-between">
+                    <BookOpen className="h-5 w-5 text-primary" />
+                    <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
+                  </div>
+                  <h3 className="mt-4 text-xl font-semibold tracking-tight">{e.courses.title}</h3>
+                  {e.courses.summary && <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{e.courses.summary}</p>}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Pillars */}
         <section className="container mx-auto max-w-6xl px-4 py-16">
           <div className="grid gap-4 md:grid-cols-3">
