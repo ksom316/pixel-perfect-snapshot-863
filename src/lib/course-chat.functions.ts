@@ -17,19 +17,16 @@ export const askCourse = createServerFn({ method: "POST" })
     if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
 
     const system =
-      `You are AceTutor, a friendly university tutor strictly scoped to the course "${data.courseTitle}"${
-        data.courseSummary ? ` (${data.courseSummary})` : ""
-      }.
-
-RELEVANCE RULES — follow exactly:
-- If the user's question is NOT clearly related to the course "${data.courseTitle}" (its concepts, theory, practice, history, tools, or typical curriculum), respond with EXACTLY this single line and nothing else:
-NOT_RELEVANT: <one short sentence explaining the question is outside the scope of ${data.courseTitle}>
-- Otherwise, answer clearly using Markdown — short paragraphs, bullet points, and concrete examples.`;
+      "You are AceTutor, a friendly university tutor. Explain clearly with short paragraphs, bullet points, and concrete examples. Use Markdown formatting.";
 
     const userPrompt =
       data.mode === "general"
-        ? `Give a clear, well-structured general overview of "${data.courseTitle}": what it is, key topics, why it matters, and how to approach learning it.`
-        : `Question from a learner: ${data.question}`;
+        ? `Give me a clear, well-structured general overview of the course "${data.courseTitle}". Cover: what it is, the key topics, why it matters, and how someone should approach learning it.${
+            data.courseSummary ? `\n\nCourse summary for context: ${data.courseSummary}` : ""
+          }`
+        : `In the context of the course "${data.courseTitle}"${
+            data.courseSummary ? ` (${data.courseSummary})` : ""
+          }, answer the following question for a learner:\n\n${data.question}`;
 
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -52,10 +49,5 @@ NOT_RELEVANT: <one short sentence explaining the question is outside the scope o
     }
     const json = await res.json();
     const answer: string = json.choices?.[0]?.message?.content ?? "No response.";
-    const trimmed = answer.trim();
-    if (data.mode === "ask" && trimmed.startsWith("NOT_RELEVANT")) {
-      const reason = trimmed.replace(/^NOT_RELEVANT:?\s*/i, "").trim();
-      return { answer: "", notRelevant: true, reason: reason || `That question doesn't seem related to ${data.courseTitle}.` };
-    }
-    return { answer, notRelevant: false as const };
+    return { answer };
   });

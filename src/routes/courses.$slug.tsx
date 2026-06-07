@@ -1,16 +1,14 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import ReactMarkdown from "react-markdown";
-import { AlertTriangle, ArrowUp, BookOpen, Check, Loader2, Plus, Sparkles } from "lucide-react";
+import { ArrowUp, BookOpen, Loader2, Sparkles } from "lucide-react";
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { askCourse } from "@/lib/course-chat.functions";
-import { useAuth } from "@/hooks/use-auth";
-import { toast } from "sonner";
 
 export const Route = createFileRoute("/courses/$slug")({
   component: CourseDetail,
@@ -19,8 +17,6 @@ export const Route = createFileRoute("/courses/$slug")({
 function CourseDetail() {
   const { slug } = Route.useParams();
   const ask = useServerFn(askCourse);
-  const { user } = useAuth();
-  const qc = useQueryClient();
   const [input, setInput] = useState("");
 
   const { data, isLoading } = useQuery({
@@ -35,36 +31,6 @@ function CourseDetail() {
       if (!course) throw notFound();
       return course;
     },
-  });
-
-  const { data: enrollment } = useQuery({
-    queryKey: ["enrollment", user?.id, data?.id],
-    enabled: !!user && !!data?.id,
-    queryFn: async () => {
-      const { data: row } = await supabase
-        .from("enrollments")
-        .select("id")
-        .eq("user_id", user!.id)
-        .eq("course_id", data!.id)
-        .maybeSingle();
-      return row;
-    },
-  });
-
-  const enroll = useMutation({
-    mutationFn: async () => {
-      if (!user || !data) throw new Error("Sign in to enroll");
-      const { error } = await supabase
-        .from("enrollments")
-        .insert({ user_id: user.id, course_id: data.id });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success(`Enrolled in ${data?.title}`);
-      qc.invalidateQueries({ queryKey: ["enrollment", user?.id, data?.id] });
-      qc.invalidateQueries({ queryKey: ["my-enrollments", user?.id] });
-    },
-    onError: (e: Error) => toast.error(e.message),
   });
 
   const mutation = useMutation({
@@ -105,36 +71,8 @@ function CourseDetail() {
             <p className="text-xs uppercase tracking-widest text-muted-foreground">
               <Link to="/courses" className="hover:underline">Courses</Link>
             </p>
-            <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h1 className="font-display text-5xl">{data.title}</h1>
-                {data.summary && <p className="mt-3 text-muted-foreground">{data.summary}</p>}
-              </div>
-              {user ? (
-                enrollment ? (
-                  <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary">
-                    <Check className="h-3.5 w-3.5" /> Enrolled
-                  </span>
-                ) : (
-                  <Button
-                    onClick={() => enroll.mutate()}
-                    disabled={enroll.isPending}
-                    className="shrink-0 rounded-full"
-                  >
-                    {enroll.isPending ? (
-                      <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Plus className="mr-1.5 h-4 w-4" />
-                    )}
-                    Enroll in course
-                  </Button>
-                )
-              ) : (
-                <Button asChild variant="outline" className="shrink-0 rounded-full">
-                  <Link to="/login">Sign in to enroll</Link>
-                </Button>
-              )}
-            </div>
+            <h1 className="mt-2 font-display text-5xl">{data.title}</h1>
+            {data.summary && <p className="mt-3 text-muted-foreground">{data.summary}</p>}
 
             <div className="mt-10 flex flex-col items-center text-center">
               <h2 className="font-display text-2xl">What would you like to learn?</h2>
@@ -217,22 +155,10 @@ function CourseDetail() {
                     Couldn't get a response: {(mutation.error as Error).message}
                   </p>
                 )}
-                {mutation.data?.notRelevant ? (
-                  <div className="flex items-start gap-3 rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-accent-foreground" />
-                    <div>
-                      <p className="font-medium text-foreground">Off-topic for this course</p>
-                      <p className="mt-1 text-muted-foreground">
-                        {mutation.data.reason} Please ask something related to <span className="text-foreground">{data.title}</span>.
-                      </p>
-                    </div>
+                {mutation.data && (
+                  <div className="prose-lesson max-w-none text-foreground">
+                    <ReactMarkdown>{mutation.data.answer}</ReactMarkdown>
                   </div>
-                ) : (
-                  mutation.data?.answer && (
-                    <div className="prose-lesson max-w-none text-foreground">
-                      <ReactMarkdown>{mutation.data.answer}</ReactMarkdown>
-                    </div>
-                  )
                 )}
               </section>
             )}
