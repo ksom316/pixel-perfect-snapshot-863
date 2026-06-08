@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { GraduationCap, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -20,6 +21,7 @@ function QuizRunner() {
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [topicTitle, setTopicTitle] = useState("");
+  const [current, setCurrent] = useState(0);
 
   useEffect(() => {
     if (!user) return;
@@ -46,10 +48,6 @@ function QuizRunner() {
 
   const submit = async () => {
     if (!attemptId) return;
-    if (Object.keys(answers).length < questions.length) {
-      toast.error("Answer every question before submitting");
-      return;
-    }
     setSubmitting(true);
     const { error } = await supabase.rpc("grade_quiz", { _attempt_id: attemptId, _answers: answers });
     setSubmitting(false);
@@ -60,43 +58,95 @@ function QuizRunner() {
     navigate({ to: "/result/$attemptId", params: { attemptId } });
   };
 
+  const q = questions[current];
+  const isLast = current === questions.length - 1;
+  const hasAnswer = q ? answers[q.id] !== undefined : false;
+
+  const next = () => {
+    if (!hasAnswer) {
+      toast.error("Pick an answer to continue");
+      return;
+    }
+    if (isLast) submit();
+    else setCurrent((c) => c + 1);
+  };
+
+  const close = () => navigate({ to: "/dashboard" });
+
   return (
-    <main className="container mx-auto max-w-3xl px-4 py-12">
-      <p className="text-xs uppercase tracking-widest text-muted-foreground">Quiz</p>
-      <h1 className="mt-2 font-display text-4xl">{topicTitle}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">Answer all questions, then submit for instant feedback.</p>
+    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+      {/* Top bar */}
+      <header className="flex h-16 items-center justify-between border-b border-border px-6">
+        <div className="flex items-center gap-2">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground">
+            <GraduationCap className="h-4 w-4" />
+          </span>
+          <span className="text-base font-semibold tracking-tight">AceTutor</span>
+        </div>
+        <button
+          onClick={close}
+          aria-label="Close quiz"
+          className="grid h-9 w-9 place-items-center rounded-full border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </header>
 
-      <ol className="mt-10 space-y-8">
-        {questions.map((q, idx) => (
-          <li key={q.id} className="rounded-2xl border border-border bg-card p-6">
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">Question {idx + 1}</p>
-            <p className="mt-2 text-lg">{q.prompt}</p>
-            <div className="mt-4 grid gap-2">
-              {q.choices.map((c, ci) => (
-                <label
-                  key={ci}
-                  className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
-                    answers[q.id] === ci ? "border-accent bg-accent/10" : "border-border hover:bg-muted/40"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name={q.id}
-                    checked={answers[q.id] === ci}
-                    onChange={() => setAnswers({ ...answers, [q.id]: ci })}
-                    className="h-4 w-4 accent-primary"
-                  />
-                  <span className="text-sm">{c}</span>
-                </label>
-              ))}
+      {/* Question */}
+      <main className="flex flex-1 flex-col items-center px-6 pt-16">
+        {!q ? (
+          <p className="text-sm text-muted-foreground">Loading quiz…</p>
+        ) : (
+          <div className="w-full max-w-2xl">
+            <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground">
+              <span>Question</span>
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-muted text-xs font-medium text-foreground">
+                {current + 1}
+              </span>
+              <span className="text-xs">of {questions.length}</span>
             </div>
-          </li>
-        ))}
-      </ol>
 
-      <Button onClick={submit} disabled={submitting || !attemptId} size="lg" className="mt-10">
-        {submitting ? "Grading…" : "Submit answers"}
-      </Button>
-    </main>
+            <h1 className="mt-8 text-center font-display text-2xl font-bold leading-snug md:text-3xl">
+              {q.prompt}
+            </h1>
+            {topicTitle && (
+              <p className="mt-2 text-center text-xs uppercase tracking-widest text-muted-foreground">
+                {topicTitle}
+              </p>
+            )}
+
+            <div className="mx-auto mt-10 grid max-w-md grid-cols-2 gap-3">
+              {q.choices.map((c, ci) => {
+                const selected = answers[q.id] === ci;
+                return (
+                  <button
+                    key={ci}
+                    type="button"
+                    onClick={() => setAnswers({ ...answers, [q.id]: ci })}
+                    className={`rounded-xl border px-4 py-3 text-sm transition-all ${
+                      selected
+                        ? "border-foreground bg-foreground/5 shadow-sm"
+                        : "border-border bg-background hover:border-foreground/40 hover:bg-muted/40"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mx-auto mt-8 max-w-md">
+              <Button
+                onClick={next}
+                disabled={submitting || !attemptId}
+                className="h-12 w-full rounded-xl bg-foreground text-background hover:bg-foreground/90"
+              >
+                {submitting ? "Grading…" : isLast ? "Submit answers" : "Next question"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
   );
 }
