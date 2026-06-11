@@ -33,9 +33,10 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { supabase } from "@/integrations/supabase/client";
-import { askCourse } from "@/lib/course-chat.functions";
+import { askCourse, type AIQuizQuestion } from "@/lib/course-chat.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
+import { AIQuizDialog } from "@/components/course/AIQuizDialog";
 
 export const Route = createFileRoute("/courses/$slug")({
   component: CourseDetail,
