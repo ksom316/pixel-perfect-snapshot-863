@@ -88,6 +88,35 @@ ${data.question}`;
         break;
     }
 
+    if (data.mode === "quiz_json") {
+      const prompt = `${fullCtx}\n\nGenerate exactly 5 multiple-choice quiz questions about ${data.moduleTitle ?? "this course"}. Each question must have exactly 4 choices. Respond ONLY with strict JSON in this shape, no prose:\n{ "questions": [ { "prompt": string, "choices": [string, string, string, string], "correctIndex": 0|1|2|3, "explanation": string } ] }`;
+      const raw = await callGateway(
+        [
+          { role: "system", content: "You output ONLY valid JSON matching the requested schema. No markdown fences." },
+          { role: "user", content: prompt },
+        ],
+        { jsonObject: true },
+      );
+      try {
+        const parsed = JSON.parse(raw);
+        const qs = Array.isArray(parsed?.questions) ? parsed.questions : [];
+        const cleaned: AIQuizQuestion[] = qs
+          .filter(
+            (q: unknown): q is AIQuizQuestion =>
+              !!q &&
+              typeof (q as AIQuizQuestion).prompt === "string" &&
+              Array.isArray((q as AIQuizQuestion).choices) &&
+              (q as AIQuizQuestion).choices.length === 4 &&
+              typeof (q as AIQuizQuestion).correctIndex === "number",
+          )
+          .slice(0, 5);
+        if (cleaned.length === 0) throw new Error("empty");
+        return { related: true as const, quiz: cleaned, answer: "" };
+      } catch {
+        throw new Error("Could not generate quiz. Please try again.");
+      }
+    }
+
     const answer = await callGateway([
       { role: "system", content: system },
       { role: "user", content: userPrompt },
