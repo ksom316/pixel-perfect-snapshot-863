@@ -359,10 +359,9 @@ function CourseDetail() {
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   {[
-                    { mode: "explain" as const, icon: BookOpen, label: "📘 Explain Topic" },
-                    { mode: "quiz" as const, icon: Brain, label: "🧠 Generate Quiz" },
-                    { mode: "summarize" as const, icon: FileText, label: "📄 Summarize Lecture" },
-                    { mode: "test" as const, icon: Target, label: "🎯 Test My Knowledge" },
+                    { mode: "explain" as const, label: "📘 Explain Topic" },
+                    { mode: "summarize" as const, label: "📄 Summarize Lecture" },
+                    { mode: "test" as const, label: "🎯 Test My Knowledge" },
                   ].map(({ mode, label }) => (
                     <Button
                       key={mode}
@@ -382,6 +381,28 @@ function CourseDetail() {
                       {label}
                     </Button>
                   ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    disabled={generateQuiz.isPending || topics.length === 0}
+                    onClick={() => {
+                      const mod = activeModule ?? topics[0];
+                      if (!mod) {
+                        toast.error("No module available");
+                        return;
+                      }
+                      generateQuiz.mutate(mod);
+                    }}
+                  >
+                    {generateQuiz.isPending ? (
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Brain className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    Generate Quiz
+                  </Button>
                   <Button
                     type="button"
                     variant="ghost"
