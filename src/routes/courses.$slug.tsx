@@ -494,16 +494,15 @@ function CourseDetail() {
                                 size="sm"
                                 variant="outline"
                                 className="rounded-full"
-                                disabled={tutor.isPending}
-                                onClick={() =>
-                                  tutor.mutate({
-                                    mode: "quiz",
-                                    moduleTitle: t.title,
-                                    moduleSummary: t.summary ?? undefined,
-                                  })
-                                }
+                                disabled={generateQuiz.isPending}
+                                onClick={() => generateQuiz.mutate(t)}
                               >
-                                <Brain className="mr-1.5 h-4 w-4" /> Generate quiz
+                                {generateQuiz.isPending ? (
+                                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Brain className="mr-1.5 h-4 w-4" />
+                                )}
+                                Generate quiz
                               </Button>
                             </div>
                           </AccordionContent>
