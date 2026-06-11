@@ -5,12 +5,19 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const schema = z.object({
   courseTitle: z.string().min(1).max(200),
   courseSummary: z.string().max(2000).optional(),
-  mode: z.enum(["general", "ask", "explain", "quiz", "summarize", "test", "recommend"]),
+  mode: z.enum(["general", "ask", "explain", "quiz", "quiz_json", "summarize", "test", "recommend"]),
   question: z.string().max(2000).optional(),
   moduleTitle: z.string().max(200).optional(),
   moduleSummary: z.string().max(2000).optional(),
   performanceSummary: z.string().max(2000).optional(),
 });
+
+export type AIQuizQuestion = {
+  prompt: string;
+  choices: string[];
+  correctIndex: number;
+  explanation: string;
+};
 
 async function callGateway(messages: { role: string; content: string }[]) {
   const apiKey = process.env.LOVABLE_API_KEY;
