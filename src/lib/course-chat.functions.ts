@@ -5,27 +5,39 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const schema = z.object({
   courseTitle: z.string().min(1).max(200),
   courseSummary: z.string().max(2000).optional(),
-  mode: z.enum(["general", "ask", "explain", "quiz", "summarize", "test", "recommend"]),
+  mode: z.enum(["general", "ask", "explain", "quiz", "quiz_json", "summarize", "test", "recommend"]),
   question: z.string().max(2000).optional(),
   moduleTitle: z.string().max(200).optional(),
   moduleSummary: z.string().max(2000).optional(),
   performanceSummary: z.string().max(2000).optional(),
 });
 
-async function callGateway(messages: { role: string; content: string }[]) {
+export type AIQuizQuestion = {
+  prompt: string;
+  choices: string[];
+  correctIndex: number;
+  explanation: string;
+};
+
+async function callGateway(
+  messages: { role: string; content: string }[],
+  opts?: { jsonObject?: boolean },
+) {
   const apiKey = process.env.LOVABLE_API_KEY;
   if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
+  const body: Record<string, unknown> = { model: "google/gemini-2.5-flash", messages };
+  if (opts?.jsonObject) body.response_format = { type: "json_object" };
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "google/gemini-2.5-flash", messages }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`AI gateway error (${res.status}): ${text.slice(0, 300)}`);
   }
   const json = await res.json();
-  return (json.choices?.[0]?.message?.content ?? "No response.") as string;
+  return (json.choices?.[0]?.message?.content ?? "") as string;
 }
 
 export const askCourse = createServerFn({ method: "POST" })
@@ -74,6 +86,35 @@ Otherwise, answer the question clearly. Prioritize this order: (1) the course ma
 Learner's question:
 ${data.question}`;
         break;
+    }
+
+    if (data.mode === "quiz_json") {
+      const prompt = `${fullCtx}\n\nGenerate exactly 5 multiple-choice quiz questions about ${data.moduleTitle ?? "this course"}. Each question must have exactly 4 choices. Respond ONLY with strict JSON in this shape, no prose:\n{ "questions": [ { "prompt": string, "choices": [string, string, string, string], "correctIndex": 0|1|2|3, "explanation": string } ] }`;
+      const raw = await callGateway(
+        [
+          { role: "system", content: "You output ONLY valid JSON matching the requested schema. No markdown fences." },
+          { role: "user", content: prompt },
+        ],
+        { jsonObject: true },
+      );
+      try {
+        const parsed = JSON.parse(raw);
+        const qs = Array.isArray(parsed?.questions) ? parsed.questions : [];
+        const cleaned: AIQuizQuestion[] = qs
+          .filter(
+            (q: unknown): q is AIQuizQuestion =>
+              !!q &&
+              typeof (q as AIQuizQuestion).prompt === "string" &&
+              Array.isArray((q as AIQuizQuestion).choices) &&
+              (q as AIQuizQuestion).choices.length === 4 &&
+              typeof (q as AIQuizQuestion).correctIndex === "number",
+          )
+          .slice(0, 5);
+        if (cleaned.length === 0) throw new Error("empty");
+        return { related: true as const, quiz: cleaned, answer: "" };
+      } catch {
+        throw new Error("Could not generate quiz. Please try again.");
+      }
     }
 
     const answer = await callGateway([

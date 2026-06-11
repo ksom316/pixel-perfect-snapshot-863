@@ -33,9 +33,10 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { supabase } from "@/integrations/supabase/client";
-import { askCourse } from "@/lib/course-chat.functions";
+import { askCourse, type AIQuizQuestion } from "@/lib/course-chat.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
+import { AIQuizDialog } from "@/components/course/AIQuizDialog";
 
 export const Route = createFileRoute("/courses/$slug")({
   component: CourseDetail,
@@ -51,6 +52,7 @@ function CourseDetail() {
   const ask = useServerFn(askCourse);
   const [input, setInput] = useState("");
   const [activeModule, setActiveModule] = useState<TopicRow | null>(null);
+  const [aiQuiz, setAiQuiz] = useState<{ module: TopicRow; questions: AIQuizQuestion[] } | null>(null);
 
   const { data: course, isLoading } = useQuery({
     queryKey: ["course", slug],
@@ -181,6 +183,27 @@ function CourseDetail() {
       });
     },
   });
+
+  const generateQuiz = useMutation({
+    mutationFn: async (module: TopicRow) => {
+      if (!course) throw new Error("Course not loaded");
+      const res = await ask({
+        data: {
+          courseTitle: course.title,
+          courseSummary: course.summary ?? undefined,
+          mode: "quiz_json",
+          moduleTitle: module.title,
+          moduleSummary: module.summary ?? undefined,
+          performanceSummary,
+        },
+      });
+      if (!res.quiz || res.quiz.length === 0) throw new Error("No quiz returned");
+      return { module, questions: res.quiz };
+    },
+    onSuccess: (data) => setAiQuiz(data),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   const recommendations = useQuery({
     queryKey: ["course-recs", course?.id, performanceSummary],
@@ -336,10 +359,9 @@ function CourseDetail() {
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   {[
-                    { mode: "explain" as const, icon: BookOpen, label: "📘 Explain Topic" },
-                    { mode: "quiz" as const, icon: Brain, label: "🧠 Generate Quiz" },
-                    { mode: "summarize" as const, icon: FileText, label: "📄 Summarize Lecture" },
-                    { mode: "test" as const, icon: Target, label: "🎯 Test My Knowledge" },
+                    { mode: "explain" as const, label: "📘 Explain Topic" },
+                    { mode: "summarize" as const, label: "📄 Summarize Lecture" },
+                    { mode: "test" as const, label: "🎯 Test My Knowledge" },
                   ].map(({ mode, label }) => (
                     <Button
                       key={mode}
@@ -359,6 +381,28 @@ function CourseDetail() {
                       {label}
                     </Button>
                   ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    disabled={generateQuiz.isPending || topics.length === 0}
+                    onClick={() => {
+                      const mod = activeModule ?? topics[0];
+                      if (!mod) {
+                        toast.error("No module available");
+                        return;
+                      }
+                      generateQuiz.mutate(mod);
+                    }}
+                  >
+                    {generateQuiz.isPending ? (
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Brain className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    Generate Quiz
+                  </Button>
                   <Button
                     type="button"
                     variant="ghost"
@@ -450,16 +494,15 @@ function CourseDetail() {
                                 size="sm"
                                 variant="outline"
                                 className="rounded-full"
-                                disabled={tutor.isPending}
-                                onClick={() =>
-                                  tutor.mutate({
-                                    mode: "quiz",
-                                    moduleTitle: t.title,
-                                    moduleSummary: t.summary ?? undefined,
-                                  })
-                                }
+                                disabled={generateQuiz.isPending}
+                                onClick={() => generateQuiz.mutate(t)}
                               >
-                                <Brain className="mr-1.5 h-4 w-4" /> Generate quiz
+                                {generateQuiz.isPending ? (
+                                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Brain className="mr-1.5 h-4 w-4" />
+                                )}
+                                Generate quiz
                               </Button>
                             </div>
                           </AccordionContent>
@@ -622,6 +665,20 @@ function CourseDetail() {
         </div>
       </main>
       <Footer />
+      {aiQuiz && user && (
+        <AIQuizDialog
+          open={!!aiQuiz}
+          onClose={() => setAiQuiz(null)}
+          courseTitle={course.title}
+          moduleTitle={aiQuiz.module.title}
+          topicId={aiQuiz.module.id}
+          userId={user.id}
+          questions={aiQuiz.questions}
+          onCompleted={() => {
+            qc.invalidateQueries({ queryKey: ["course-attempts", user.id, course.id] });
+          }}
+        />
+      )}
     </div>
   );
 }
