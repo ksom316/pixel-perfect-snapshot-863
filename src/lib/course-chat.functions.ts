@@ -19,20 +19,25 @@ export type AIQuizQuestion = {
   explanation: string;
 };
 
-async function callGateway(messages: { role: string; content: string }[]) {
+async function callGateway(
+  messages: { role: string; content: string }[],
+  opts?: { jsonObject?: boolean },
+) {
   const apiKey = process.env.LOVABLE_API_KEY;
   if (!apiKey) throw new Error("LOVABLE_API_KEY not configured");
+  const body: Record<string, unknown> = { model: "google/gemini-2.5-flash", messages };
+  if (opts?.jsonObject) body.response_format = { type: "json_object" };
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "google/gemini-2.5-flash", messages }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`AI gateway error (${res.status}): ${text.slice(0, 300)}`);
   }
   const json = await res.json();
-  return (json.choices?.[0]?.message?.content ?? "No response.") as string;
+  return (json.choices?.[0]?.message?.content ?? "") as string;
 }
 
 export const askCourse = createServerFn({ method: "POST" })
