@@ -184,6 +184,27 @@ function CourseDetail() {
     },
   });
 
+  const generateQuiz = useMutation({
+    mutationFn: async (module: TopicRow) => {
+      if (!course) throw new Error("Course not loaded");
+      const res = await ask({
+        data: {
+          courseTitle: course.title,
+          courseSummary: course.summary ?? undefined,
+          mode: "quiz_json",
+          moduleTitle: module.title,
+          moduleSummary: module.summary ?? undefined,
+          performanceSummary,
+        },
+      });
+      if (!res.quiz || res.quiz.length === 0) throw new Error("No quiz returned");
+      return { module, questions: res.quiz };
+    },
+    onSuccess: (data) => setAiQuiz(data),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
   const recommendations = useQuery({
     queryKey: ["course-recs", course?.id, performanceSummary],
     enabled: !!course && !!user && attempts.length > 0,
