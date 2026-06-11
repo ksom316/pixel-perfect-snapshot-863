@@ -115,8 +115,7 @@ export function AIQuizDialog({
     <>
       <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
         <DialogContent
-          showCloseButton={false}
-          className="max-w-4xl gap-0 overflow-hidden p-0 sm:max-w-4xl"
+          className="max-w-4xl gap-0 overflow-hidden p-0 sm:max-w-4xl [&>button]:hidden"
         >
           {/* Header */}
           <div className="border-b border-border">
