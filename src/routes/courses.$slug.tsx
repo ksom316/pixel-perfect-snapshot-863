@@ -52,6 +52,7 @@ function CourseDetail() {
   const ask = useServerFn(askCourse);
   const [input, setInput] = useState("");
   const [activeModule, setActiveModule] = useState<TopicRow | null>(null);
+  const [aiQuiz, setAiQuiz] = useState<{ module: TopicRow; questions: AIQuizQuestion[] } | null>(null);
 
   const { data: course, isLoading } = useQuery({
     queryKey: ["course", slug],
