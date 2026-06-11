@@ -665,6 +665,20 @@ function CourseDetail() {
         </div>
       </main>
       <Footer />
+      {aiQuiz && user && (
+        <AIQuizDialog
+          open={!!aiQuiz}
+          onClose={() => setAiQuiz(null)}
+          courseTitle={course.title}
+          moduleTitle={aiQuiz.module.title}
+          topicId={aiQuiz.module.id}
+          userId={user.id}
+          questions={aiQuiz.questions}
+          onCompleted={() => {
+            qc.invalidateQueries({ queryKey: ["course-attempts", user.id, course.id] });
+          }}
+        />
+      )}
     </div>
   );
 }
